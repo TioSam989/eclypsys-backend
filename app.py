@@ -17,21 +17,24 @@ uid = common.authenticate(ODOO_DB, ODOO_USERNAME, ODOO_PASSWORD, {})
 
 app = Flask(__name__)
 
+
 @app.route("/fields", methods=["GET"])
 def get_fields():
     try:
+        # Tentativa de buscar os campos
         fields = models.execute_kw(
             ODOO_DB,
             uid,
             ODOO_PASSWORD,
             "product.product",
-            "field_get",
-            [],
-            {"attributes": ["string", "type"]},
+            "fields_get",
+            [[], {"attributes": ["string", "type"]}],
         )
         return jsonify(fields), 200
-    except Exception as err:
-        return jsonify({"Error": str(2)}), 500
+    except Exception as e:
+        print("Erro detalhado:", str(e))  # Adicione isso para logs detalhados
+        return jsonify({"error": "Erro ao buscar campos", "details": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)
