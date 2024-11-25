@@ -1,4 +1,3 @@
-# odoo_client.py
 import os
 import xmlrpc.client
 from dotenv import load_dotenv
@@ -22,17 +21,21 @@ class OdooClient:
         self.uid = self.authenticate()
 
     def authenticate(self):
-        """Authenticate with the Odoo server"""
         return self.common.authenticate(self.db, self.username, self.password, {})
 
-    def search_read(self, model, fields):
-        """Fetch a list of records with specific fields"""
-        return self.models.execute_kw(
-            self.db,
-            self.uid,
-            self.password,
-            model,
-            "search_read",
-            [[]],
-            {"fields": fields},
-        )
+    def search_read(self, model, fields=None, domain=None, limit=None, offset=None):
+        fields = fields or []
+        domain = domain or []
+
+        try:
+            return self.models.execute_kw(
+                self.db,
+                self.uid,
+                self.password,
+                model,
+                "search_read",
+                [domain],
+                {"fields": fields, "limit": limit, "offset": offset},
+            )
+        except xmlrpc.client.Fault as e:
+            raise Exception(f"Failed to fetch data: {str(e)}")
