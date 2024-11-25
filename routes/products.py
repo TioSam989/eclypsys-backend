@@ -5,13 +5,14 @@ odoo = OdooClient()
 
 products_bp = Blueprint("products", __name__)
 
-fields = ["name", "list_price", "type", "image_1920", "categ_id"]
+# fields = ["name", "list_price", "type", "image_1920", "categ_id"]
+fields = ["name", "list_price", "type", "categ_id"]
 
 
 @products_bp.route("/products", methods=["GET"])
 def get_products():
     try:
-        limit = request.args.get("limit", type=int, default=10)
+        limit = request.args.get("limit", type=int, default=500)
         offset = request.args.get("offset", type=int, default=0)
 
         products = odoo.search_read(
@@ -84,27 +85,24 @@ def get_products_by_category():
 @products_bp.route("/products/bestsellers", methods=["GET"])
 def get_bestsellers():
     try:
-        limit = request.args.get("limit", type=int, default=5)
+        limit = request.args.get("limit", type=int, default=100)
+        offset = request.args.get("offset", type=int, default=500)
 
-        products = odoo.search_read(
-            "product.product", fields=fields + ["sales_count"], limit=limit
+        bestsellers = odoo.search_read(
+            "product.product", fields=fields, limit=limit, offset=offset,
         )
-
-        bestsellers = sorted(
-            products, key=lambda x: x.get("sales_count", 0), reverse=True
-        )[:limit]
-
+        
         processed_bestsellers = [
             {
-                "name": product.get("name", "Unknown"),
-                "list_price": product.get("list_price", 0.0),
-                "type": product.get("type", "Unknown"),
+                "name": product.get("name", "Unknown") or None,
+                "list_price": product.get("list_price", 0.0) or None,
+                "type": product.get("type", "Unknown") or None,
                 "img": (
                     f"data:image/png;base64,{product.get('image_1920', '')}"
-                    if product.get("image_1920")
-                    else ""
+                    if product.get("image_1920") or None
+                    else None
                 ),
-                "sales_count": product.get("sales_count", 0),
+                "sales_count": product.get("sales_count", "need to fix",
             }
             for product in bestsellers
         ]
