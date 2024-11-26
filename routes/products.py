@@ -5,9 +5,7 @@ odoo = OdooClient()
 
 products_bp = Blueprint("products", __name__)
 
-# fields = ["name", "list_price", "type", "image_1920", "categ_id"]
-fields = ["name", "list_price", "type", "categ_id"]
-
+fields = ["name", "list_price", "type", "image_1920", "categ_id"]
 
 @products_bp.route("/products", methods=["GET"])
 def get_products():
@@ -38,76 +36,54 @@ def get_products():
     except Exception as e:
         return jsonify({"error": f"Failed to fetch products: {str(e)}"}), 500
 
-
-@products_bp.route("/products/by-category", methods=["GET"])
-def get_products_by_category():
+@products_bp.route("/products/categories", methods=["GET"])
+def get_categories_with_products():
     try:
         limit = request.args.get("limit", type=int, default=100)
-        offset = request.args.get("offset", type=int, default=500)
+        offset = request.args.get("offset", type=int, default=0)
 
         products = odoo.search_read(
             "product.product",
-            fields=["id", "categ_id"],
+            fields=fields,
             limit=limit,
             offset=offset,
         )
 
+        if not products:
+            return jsonify({"error": "No products found"}), 404
+
+        categories = {}
         for product in products:
-            categ_id = product.get("categ_id")
+            categ_data = product.get("categ_id")
+            product_data = {
+                "id": product.get("id"),
+                "name": product.get("name", "Unknown"),
+                "price": product.get("list_price", 0.0),
+                "img": (
+                    f"data:image/png;base64,{product.get('image_1920')}"
+                    if product.get("image_1920")
+                    else None
+                ),
+            }
 
-            if not categ_id:
-                product_id = product.get("id")
-                odoo.models.execute_kw(
-                    odoo.db,
-                    odoo.uid,
-                    odoo.password,
-                    "product.product",
-                    "unlink",
-                    [[product_id]],
-                )
-
-        categories = []
-
-        for product in products:
-            categ_id = product.get("categ_id")
-
-            if categ_id:
-                categories.append({"id": categ_id[0], "name": categ_id[1]})
+            if not categ_data:
+                categ_id = "000"
+                categ_name = "Uncategorized"
             else:
-                categories.append({"id": "000", "name": "Uncategorized"})
+                categ_id, categ_name = categ_data
 
-        return jsonify(categories), 200
+            if categ_id not in categories:
+                categories[categ_id] = {
+                    "id": categ_id,
+                    "name": categ_name,
+                    "products": [],
+                }
+
+            categories[categ_id]["products"].append(product_data)
+
+        categories_list = list(categories.values())
+
+        return jsonify(categories_list), 200
 
     except Exception as err:
         return jsonify({"error": f"Failed to fetch categories: {str(err)}"}), 500
-
-
-@products_bp.route("/products/bestsellers", methods=["GET"])
-def get_bestsellers():
-    try:
-        limit = request.args.get("limit", type=int, default=100)
-        offset = request.args.get("offset", type=int, default=500)
-
-        bestsellers = odoo.search_read(
-            "product.product", fields=fields, limit=limit, offset=offset,
-        )
-        
-        processed_bestsellers = [
-            {
-                "name": product.get("name", "Unknown") or None,
-                "list_price": product.get("list_price", 0.0) or None,
-                "type": product.get("type", "Unknown") or None,
-                "img": (
-                    f"data:image/png;base64,{product.get('image_1920', '')}"
-                    if product.get("image_1920") or None
-                    else None
-                ),
-                "sales_count": product.get("sales_count", "need to fix",
-            }
-            for product in bestsellers
-        ]
-
-        return jsonify(processed_bestsellers), 200
-
-    except Exception as e:
-        return jsonify({"error": f"Failed to fetch bestsellers: {str(e)}"}), 500
