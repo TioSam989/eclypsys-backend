@@ -63,6 +63,7 @@ def get_categories_with_products():
                 "name": product.get("name", "Unknown"),
                 "price": product.get("list_price", 0.0),
                 "sales_count": product.get("sales_count", 0.0),
+                "category": product.get("categ_id", "Uncategorized"),
                 "img": (
                     f"data:image/png;base64,{product.get('image_1920')}"
                     if product.get("image_1920")
@@ -120,6 +121,7 @@ def get_products_sorted_by_sales():
                 "price": product.get("list_price", 0.0),
                 "sales_count": product.get("sales_count", 0),
                 "type": product.get("type", "Unknown"),
+                "category": product.get("categ_id", "Uncategorized"),
                 "img": (
                     f"data:image/png;base64,{product.get('image_1920')}"
                     if product.get("image_1920")
