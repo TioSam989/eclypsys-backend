@@ -5,12 +5,13 @@ odoo = OdooClient()
 
 products_bp = Blueprint("products", __name__)
 
-fields = ["name", "list_price", "type", "image_1920", "categ_id"]
+fields = ["name", "list_price", "type", "image_1920", "categ_id", "sales_count"]
+
 
 @products_bp.route("/products", methods=["GET"])
 def get_products():
     try:
-        limit = request.args.get("limit", type=int, default=500)
+        limit = request.args.get("limit", type=int, default=100)
         offset = request.args.get("offset", type=int, default=0)
 
         products = odoo.search_read(
@@ -23,6 +24,7 @@ def get_products():
                 "price": product.get("list_price", 0.0),
                 "type": product.get("type", "Unknown"),
                 "category": product.get("categ_id", "Uncategorized"),
+                "sales_count": product.get("sales_count", 0.0),
                 "img": (
                     f"data:image/png;base64,{product['image_1920']}"
                     if product.get("image_1920")
@@ -35,6 +37,7 @@ def get_products():
         return jsonify(processed_products), 200
     except Exception as e:
         return jsonify({"error": f"Failed to fetch products: {str(e)}"}), 500
+
 
 @products_bp.route("/products/categories", methods=["GET"])
 def get_categories_with_products():
@@ -87,3 +90,48 @@ def get_categories_with_products():
 
     except Exception as err:
         return jsonify({"error": f"Failed to fetch categories: {str(err)}"}), 500
+
+
+@products_bp.route("/products/sorted-by-sales", methods=["GET"])
+def get_products_sorted_by_sales():
+    try:
+        limit = request.args.get("limit", type=int, default=100)
+        offset = request.args.get("offset", type=int, default=0)
+
+        products = odoo.search_read(
+            "product.product",
+            fields=fields,
+            limit=limit,
+            offset=offset,
+        )
+
+        if not products:
+            return jsonify({"error": "No products found"}), 404
+
+        sorted_products = sorted(
+            products, key=lambda x: x.get("sales_count", 0), reverse=True
+        )
+
+        processed_products = [
+            {
+                "id": product.get("id"),
+                "name": product.get("name", "Unknown"),
+                "price": product.get("list_price", 0.0),
+                "sales_count": product.get("sales_count", 0),
+                "type": product.get("type", "Unknown"),
+                "img": (
+                    f"data:image/png;base64,{product.get('image_1920')}"
+                    if product.get("image_1920")
+                    else None
+                ),
+            }
+            for product in sorted_products
+        ]
+
+        return jsonify(processed_products[:limit]), 200
+
+    except Exception as e:
+        return (
+            jsonify({"error": f"Failed to fetch products sorted by sales: {str(e)}"}),
+            500,
+        )
